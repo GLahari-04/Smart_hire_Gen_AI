@@ -1,0 +1,13 @@
+langchain
+langchain-google-genai
+langchain-community
+faiss-cpu
+google-generativeai
+sentence-transformers
+pypdf
+python-docx
+pandas
+python-dotenv
+streamlit
+kagglehub
+ipykernel

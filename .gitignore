@@ -1,0 +1,31 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache & Compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testing & Jupyter
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Development Backups
+vectorstore/jobs_faiss_backup/
+vectorstore/notes_faiss_backup/
+
+# Personal & Confidential Data
+data/resumes/Lahari_Resume.pdf
+
+# OS Generated Files
+.DS_Store
+Thumbs.db
