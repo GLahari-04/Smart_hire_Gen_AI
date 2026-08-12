@@ -1,151 +1,153 @@
 # SmartHire GenAI — Resume Matching & AI Career Mentor
 
-A Generative AI career portal. Upload a resume → get a parsed profile, a ranked list
-of matching jobs by **semantic search**, **AI-generated** CV suggestions, and an
-**AI Career Mentor** chatbot that answers grounded in your documents (RAG).
+SmartHire GenAI is an AI-powered career assistance platform that helps job seekers analyze resumes, discover relevant job opportunities, optimize CV bullet points, and consult an AI Career Mentor.
 
-Built with the stack from class: **Gemini API · embeddings · FAISS · RAG · LangChain ·
-guardrails · Streamlit.**
+The application combines Generative AI (Google Gemini 2.5 Flash Lite), local semantic search (SentenceTransformers `all-MiniLM-L6-v2`), FAISS vector databases, Retrieval-Augmented Generation (RAG), input safety guardrails, and an interactive Streamlit web application.
 
-## Core scope
-1. **Resume parser** — LLM structured output → clean JSON profile
-2. **Semantic job search** — embed jobs into FAISS, top-N similarity match
-3. **AI Career Mentor** — RAG over your career notes (LangChain)
+---
 
-Strengthen it with: the **CV improvement generator**, a **guardrails** layer, an
-**evaluation report**, and **deployment**.
+## Overview
 
-## Requirements
-- **Python 3.10+** (developed on 3.12)
-- **git** (to clone)
-- A free **Gemini API key** — https://aistudio.google.com/apikey
-- A free **Kaggle account** (to download the job dataset)
+SmartHire GenAI provides a 4-step workflow for candidate career optimization:
 
-## Getting started
+1. **📊 Candidate Profile Extraction**: Resume parsing with structured profile extraction (Name, Skills, Experience, Education, Target Role) via Gemini API with an automatic local fallback parser.
+2. **🎯 Semantic Job Matcher**: Sub-second vector similarity search using local `all-MiniLM-L6-v2` embeddings and FAISS indices over job postings.
+3. **⚡ CV Optimizer**: AI-driven CV enhancement providing missing skill gaps, bullet point improvements (before/after comparison), and tailored professional summaries.
+4. **💬 AI Career Mentor**: RAG-powered career Q&A chatbot grounded in curated career roadmaps and resume writing guides, equipped with input guardrails.
 
-### 1. Clone the repo
+---
+
+## Key Features & Component Details
+
+### 1. Resume Parser (`src/parsing/`)
+* Extracts structured candidate profiles containing `name`, `skills`, `experience`, `education`, and `target_role`.
+* **Hybrid Parser Architecture**:
+  * Primary: Google Gemini 2.5 Flash Lite structured JSON mode.
+  * Resilience Fallback (`_parse_resume_locally`): Pure local regex and skill taxonomy parser that automatically intercepts 429 rate limits or network issues to return valid profile objects.
+
+### 2. Semantic Job Matcher (`src/search/`)
+* Converts candidate profile data into 384-dimensional vector embeddings using local `SentenceTransformer("all-MiniLM-L6-v2")`.
+* Performs sub-second similarity matching against a FAISS L2 Euclidean index (`vectorstore/jobs_faiss`).
+* Displays human-readable relevance match badges (🟢 High Match, 🔵 Good Match, 🟡 Moderate Match) and enables direct candidate target job selection.
+
+### 3. CV Optimizer (`src/generate/`)
+* Compares candidate profile against selected target job descriptions.
+* Generates tailored improvement recommendations:
+  * **Skill Gap Analysis**: Identifies key missing technical skills.
+  * **Bullet Point Diff Analysis**: Highlights weak bullet points and provides action-verb-oriented rewrites.
+  * **Professional Summary**: Rewrites candidate summaries tailored to the target role.
+
+### 4. RAG AI Career Mentor (`src/mentor/`)
+* Answers career development, resume writing, and interview prep questions.
+* **Retrieval-Augmented Generation (RAG)**: Retrieves top relevant documentation chunks from FAISS note indices (`vectorstore/notes_faiss`) built over curated career notes (`data/career_notes/`).
+* **Source Attribution**: Cites specific reference documents used to formulate answers.
+
+### 5. Input Safety Guardrails (`src/safety/`)
+* Pre-execution validation layer running before LLM calls (`src/safety/guardrails.py`).
+* **Safety Filters**:
+  * Character length bounds validation.
+  * Prompt injection & system override detection.
+  * Harmful / inappropriate keyword filtering.
+  * Off-topic question filter & career domain relevance validation.
+
+### 6. Evaluation & Reports (`reports/`, `src/evaluate.py`)
+* Evaluation framework and performance metrics documented in `reports/answer_quality.md`.
+* `src/evaluate.py` serves as the evaluation module interface stub for automated benchmark extensions.
+
+---
+
+## Architecture & Data Flow
+
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           User Interface                                │
+│                     (Streamlit Web Portal - app/streamlit_app.py)       │
+└───────┬─────────────────┬───────────────────┬───────────────────┬───────┘
+        │                 │                   │                   │
+        ▼                 ▼                   ▼                   ▼
+┌───────────────┐ ┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+│ Candidate     │ │ Semantic Job  │   │ CV Optimizer  │   │ AI Career     │
+│ Profile       │ │ Matcher       │   │               │   │ Mentor        │
+└───────┬───────┘ └───────┬───────┘   └───────┬───────┘   └───────┬───────┘
+        │                 │                   │                   │
+        ▼                 ▼                   ▼                   ▼
+┌───────────────┐ ┌───────────────┐   ┌───────────────┐   ┌───────────────┐
+│ Gemini /      │ │ Local Model   │   │ Gemini 2.5    │   │ Local RAG     │
+│ Local Parser  │ │ MiniLM + FAISS│   │ Flash Lite    │   │ + Guardrails  │
+└───────────────┘ └───────────────┘   └───────────────┘   └───────────────┘
 ```
-git clone <REPO_URL> SmartHire-GenAI
-cd SmartHire-GenAI
-```
 
-### 2. Create a virtual environment and install dependencies
-```
+---
+
+## Technology Stack
+
+* **Frontend**: Streamlit
+* **LLM Engine**: Google Gemini API (`gemini-2.5-flash-lite`)
+* **Embedding Model**: `sentence-transformers` (`all-MiniLM-L6-v2`, 384 dimensions)
+* **Vector Database**: FAISS (`faiss-cpu`)
+* **Orchestration / RAG**: LangChain (`langchain-community`, `langchain-google-genai`)
+* **Document Processing**: `pypdf`, `python-docx`, `pandas`
+* **Environment Management**: `python-dotenv`
+
+---
+
+## Setup & Local Installation
+
+### 1. Clone Repository & Setup Virtual Environment
+```bash
+git clone https://github.com/GLahari-04/Smart_hire_Gen_AI.git
+cd Smart_hire_Gen_AI
+
 python -m venv .venv
-
-# Windows (PowerShell)
-.venv\Scripts\Activate.ps1
-# Windows (cmd)
-.venv\Scripts\activate.bat
-# macOS / Linux
+# On Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
+# On Linux/macOS:
 source .venv/bin/activate
+```
 
+### 2. Install Dependencies
+```bash
 pip install -r requirements.txt
 ```
 
-### 3. Add your API key
+### 3. Configure API Keys
+Create a `.env` file in the root directory (refer to `.env.example`):
+```env
+GOOGLE_API_KEY=your_gemini_api_key_here
 ```
-copy .env.example .env      # Windows   (macOS/Linux: cp .env.example .env)
-```
-Open `.env` and paste your Gemini key. `.env` is git-ignored — never commit it.
 
-### 4. Get the data
-The datasets are **not** committed (see `.gitignore`). Full details:
-[`data/DATASETS.md`](data/DATASETS.md).
-
-- **Jobs** — download the corpus into `data/jobs/`:
-  ```
-  python download_data.py
-  ```
-- **Resumes** — drop two or three sample PDF/DOCX resumes into `data/resumes/`.
-- **Career notes** — two starter notes are already in `data/career_notes/`. Add more
-  role guides / skill roadmaps to make the mentor answer more questions.
-
-### 5. Build in the notebooks (VS Code)
-The notebooks run in **VS Code** (install the **Python** and **Jupyter** extensions if
-prompted). Open a notebook, click **Select Kernel → Python Environments**, and choose
-the `.venv`. Run cells with **Shift+Enter**.
-
-Run them in order **01 → 03**. Each is one part of the project; move working code from a
-notebook into the matching `src/` file, and save the FAISS indexes to `vectorstore/` so
-the app loads them without rebuilding.
-
-1. `01_embeddings_explore.ipynb` — resume parser (structured output) + test embeddings
-2. `02_build_faiss.ipynb` — build the job FAISS index + semantic top-N search
-3. `03_rag_prototype.ipynb` — the AI Career Mentor RAG chain + guardrails
-
-### 6. Launch the web app
-```
+### 4. Run Application
+```bash
 streamlit run app/streamlit_app.py
 ```
-Opens the SmartHire GenAI portal in your browser (default <http://localhost:8501>).
 
-> **Current status:** the plumbing works — `src/config.py`, `src/parsing/loader.py`
-> (load + chunk PDF/DOCX/TXT), and `download_data.py`. The LLM-specific modules
-> (`resume_parser`, `embed`, `job_search`, `cv_suggestions`, `rag_chain`, `guardrails`,
-> `evaluate`) and the Streamlit UI are **stubs** — build them via the notebooks first
-> (step 5). Until then the app page will be empty.
+---
 
-## Project structure
-```
-smarthire-genai/
-├── README.md                       # what it is, setup, how to run
-├── requirements.txt                # langchain, langchain-google-genai, faiss-cpu, streamlit, pypdf, ...
-├── download_data.py                # fetch the job dataset from Kaggle into data/jobs/
-├── .env.example                    # API key placeholder (copy to .env; never commit real keys)
-├── .gitignore                      # ignores .env, data/, vectorstore/, venv/
-│
-├── data/                           # all data lives here (git-ignored)
-│   ├── DATASETS.md                 # what to download and where it goes
-│   ├── jobs/                       # job dataset CSV (download once)
-│   ├── resumes/                    # sample resumes to test the parser (add your own)
-│   └── career_notes/               # docs the mentor retrieves from (2 starters provided)
-│
-├── vectorstore/                    # saved FAISS indexes (git-ignored — rebuilt from data)
-│
-├── notebooks/                      # prototype here — run in order 01 → 03
-│   ├── 01_embeddings_explore.ipynb # resume parser + test embeddings/similarity
-│   ├── 02_build_faiss.ipynb        # build the job vector index + semantic search
-│   └── 03_rag_prototype.ipynb      # the mentor RAG chain
-│
-├── src/                            # reusable code — imported by notebooks + app
-│   ├── config.py                   # paths, model names, chunk/retrieval params
-│   ├── parsing/
-│   │   ├── loader.py               # load + chunk PDF/DOCX/TXT   (implemented)
-│   │   └── resume_parser.py        # LLM structured output → JSON profile
-│   ├── search/
-│   │   ├── embed.py                # create embeddings
-│   │   └── job_search.py           # FAISS index + top-N query
-│   ├── generate/
-│   │   ├── prompts.py              # prompt library (all prompts in one place)
-│   │   └── cv_suggestions.py       # CV improvement generator
-│   ├── mentor/
-│   │   └── rag_chain.py            # RAG mentor with LangChain
-│   ├── safety/
-│   │   └── guardrails.py           # input validation + filters (run before the LLM)
-│   └── evaluate.py                 # answer-quality + retrieval checks
-│
+## Project Structure
+
+```text
+Smart_hire_Gen_AI/
 ├── app/
-│   └── streamlit_app.py            # the portal UI — build this LAST
-│
-└── reports/
-    ├── answer_quality.md           # evaluation results (template to fill in)
-    └── final_report.pdf            # written report (you add this)
+│   └── streamlit_app.py          # Streamlit Web Application
+├── src/
+│   ├── config.py                 # Centralized configuration & paths
+│   ├── evaluate.py               # Evaluation module interface stub
+│   ├── parsing/                  # Resume PDF/DOCX loaders & hybrid parser
+│   ├── search/                   # Local embeddings & FAISS job search
+│   ├── generate/                 # CV improvement generator & prompts
+│   ├── mentor/                   # RAG career mentor chain
+│   └── safety/                   # Pre-execution safety guardrails
+├── data/
+│   ├── jobs/                     # Job dataset (naukri_com-job_sample.csv)
+│   ├── career_notes/             # Curated markdown guides for RAG
+│   └── resumes/                  # Sample resumes for testing
+├── vectorstore/
+│   ├── jobs_faiss/               # FAISS 384-dim job postings vector index
+│   └── notes_faiss/              # FAISS 384-dim career notes vector index
+├── reports/
+│   └── answer_quality.md         # Answer quality & retrieval evaluation report
+├── .env.example                  # Environment configuration template
+├── .gitignore                    # Git secrets & artifact exclusion rules
+├── requirements.txt              # Production python package dependencies
+└── README.md                     # Project documentation
 ```
-
-### What each part is for
-- **`data/`** — Job CSV in `jobs/`, sample resumes in `resumes/`, mentor notes in
-  `career_notes/`. Git-ignored so data is never committed.
-- **`vectorstore/`** — Saved FAISS indexes. Rebuild from `data/`, so it is not committed.
-- **`notebooks/`** — Where you prototype. Run 01 → 03; each is one part of the project.
-- **`src/`** — Once code works in a notebook, move it here so the notebooks and the app
-  both import it. `config.py` holds every path and model name so nothing is hard-coded.
-- **`app/`** — The Streamlit portal. It only wires together pieces that already work in
-  `src/`, so build it last. Cache the index/chain with `@st.cache_resource`.
-- **`reports/`** — The evaluation results and the written report.
-
-## Notes & constraints
-- Keep API keys in `.env` (local) or Streamlit **Secrets** (deployed) — never in code.
-- Watch API usage: cache results while developing and test on small batches first.
-- The mentor must answer **from your notes** (RAG), not open-ended — grounding is graded.
-- Guardrails are **required**: reject unsafe or off-topic input before every LLM call.
