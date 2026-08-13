@@ -440,6 +440,41 @@ if selected_resume_path and selected_resume_path.exists():
                             st.success(summary)
 
                         st.markdown("---")
+                        
+                        # Interactive Skill Coverage Visualization
+                        cand_skills_list = profile.get("skills", [])
+                        cand_skills_set = {s.strip().lower() for s in cand_skills_list if isinstance(s, str)}
+                        job_skills_str = target_job.get("skills", "N/A")
+                        job_skills_list = [s.strip() for s in job_skills_str.replace(";", ",").split(",") if s.strip()]
+
+                        matched_skills = []
+                        missing_skills_vis = []
+                        for js in job_skills_list:
+                            js_lower = js.lower()
+                            if any(js_lower == cs or js_lower in cs or cs in js_lower for cs in cand_skills_set):
+                                matched_skills.append(js)
+                            else:
+                                missing_skills_vis.append(js)
+
+                        total_req = len(job_skills_list)
+                        match_count = len(matched_skills)
+                        coverage_pct = min(100, int((match_count / max(total_req, 1)) * 100))
+
+                        st.markdown("### 📊 Skill Match Alignment & Coverage")
+                        cov_col1, cov_col2 = st.columns([1, 3])
+                        with cov_col1:
+                            st.markdown(f"""
+                            <div class="metric-card">
+                                <div class="metric-value" style="color:#1D4ED8;">{coverage_pct}%</div>
+                                <div class="metric-label">Skill Coverage Rate</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        with cov_col2:
+                            st.progress(coverage_pct / 100.0)
+                            st.markdown(f"**Matched Required Skills ({len(matched_skills)}):** " + (" ".join([f'<span class="skill-chip" style="background:#DCFCE7; color:#15803D; border-color:#86EFAC;">✓ {s}</span>' for s in matched_skills]) if matched_skills else "*None*"), unsafe_allow_html=True)
+                            st.markdown(f"**Missing Required Skills ({len(missing_skills_vis)}):** " + (" ".join([f'<span class="skill-chip" style="background:#FEF3C7; color:#B45309; border-color:#FDE68A;">⚠️ {s}</span>' for s in missing_skills_vis]) if missing_skills_vis else "*None*"), unsafe_allow_html=True)
+
+                        st.markdown("---")
                         st.markdown("### 🔍 Weak Bullet Points Analysis & Rewrites")
                         weak_bullets = suggestions.get("weak_bullet_points", [])
                         if weak_bullets:
@@ -454,6 +489,52 @@ if selected_resume_path and selected_resume_path.exists():
                                 """, unsafe_allow_html=True)
                         else:
                             st.info("No weak bullet points identified.")
+
+                        st.markdown("---")
+                        st.markdown("### 📥 Export Candidate CV Optimization Report")
+                        
+                        # Generate Markdown Summary Report
+                        report_lines = [
+                            "# SmartHire GenAI — Candidate CV Optimization Report",
+                            "",
+                            f"**Candidate Name:** {profile.get('name', 'Candidate')}",
+                            f"**Target Role:** {profile.get('target_role', 'N/A')}",
+                            f"**Target Job:** {target_job.get('jobtitle', 'N/A')} at {target_job.get('company', 'N/A')}",
+                            f"**Skill Coverage Match Rate:** {coverage_pct}% ({match_count}/{total_req} required skills matched)",
+                            "",
+                            "## 1. Candidate Technical Skills",
+                            ", ".join(profile.get("skills", [])),
+                            "",
+                            "## 2. Target Job Requirements & Skill Gaps",
+                            f"**Required Job Skills:** {job_skills_str}",
+                            f"**Matched Skills:** {', '.join(matched_skills) if matched_skills else 'None'}",
+                            f"**Missing Skills:** {', '.join(suggestions.get('missing_skills', missing_skills_vis)) if suggestions.get('missing_skills') or missing_skills_vis else 'None'}",
+                            "",
+                            "## 3. Tailored Professional Summary",
+                            suggestions.get("rewritten_summary", "Summary not generated."),
+                            "",
+                            "## 4. Weak Bullet Points Analysis & Rewrites"
+                        ]
+
+                        for b_idx, b_item in enumerate(weak_bullets, 1):
+                            report_lines.extend([
+                                f"### Bullet #{b_idx}",
+                                f"- **Original:** {b_item.get('original_bullet', 'N/A')}",
+                                f"- **Reason Weak:** {b_item.get('reason_weak', 'N/A')}",
+                                f"- **Improved Version:** {b_item.get('improved_bullet', 'N/A')}",
+                                ""
+                            ])
+
+                        report_md_text = "\n".join(report_lines)
+                        cand_filename_safe = profile.get("name", "Candidate").replace(" ", "_")
+
+                        st.download_button(
+                            label="📥 Download CV Optimization Summary Report (.md)",
+                            data=report_md_text,
+                            file_name=f"CV_Optimization_Report_{cand_filename_safe}.md",
+                            mime="text/markdown",
+                            type="primary"
+                        )
             else:
                 st.warning("Please select a target job from Tab 2 first.")
 
