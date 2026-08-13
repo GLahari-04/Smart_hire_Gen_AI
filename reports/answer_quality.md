@@ -18,9 +18,9 @@ Evaluates RAG mentor responses against curated career note context (`vectorstore
 
 | Question | Correct? | Grounded in context? | Helpful? | Sources & Notes |
 |----------|----------|----------------------|----------|-----------------|
-| What core technical skills are required to become a Data Analyst? | Yes (Correct) | Yes (Grounded) | Yes (Helpful) | Job: Data Scientist - Machine Learning at Premium-Jobs hiring for Leading client of Staffio HR, Job: Marketing Data Analytics Specialist at SchoolCity Learning India Pvt Ltd, data_analyst_roadmap.md, resume_writing_tips.md |
-| How should I structure my resume bullet points for maximum impact? | Yes (Correct) | Yes (Grounded) | Yes (Helpful) | Job: Civil Drafter - Freshers at Take Wings hiring for http://takewing.co.in, Job: Civil Engineer - Freshers at Take Wings hiring for http://takewing.co.in, data_analyst_roadmap.md, resume_writing_tips.md |
-| What Python developer jobs and required skills are currently in demand in the market? | Yes (Correct) | Yes (Grounded) | Yes (Helpful) | Job: Lead Python Developer at Confidential, Job: Python Developer at Confidential, data_analyst_roadmap.md, resume_writing_tips.md |
+| What core technical skills are required to become a Data Analyst? | Yes (Correct) | Yes (Grounded) | Yes (Helpful) | Job: Data Scientist - Machine Learning at Premium-Jobs hiring for Leading client of Staffio HR, Job: Marketing Data Analytics Specialist at SchoolCity Learning India Pvt Ltd, data_analyst_roadmap.md, software_engineer_roadmap.md |
+| How should I structure my resume bullet points for maximum impact? | Yes (Correct) | Yes (Grounded) | Yes (Helpful) | Job: Civil Drafter - Freshers at Take Wings hiring for http://takewing.co.in, Job: Civil Engineer - Freshers at Take Wings hiring for http://takewing.co.in, resume_writing_tips.md, software_engineer_roadmap.md |
+| What Python developer jobs and required skills are currently in demand in the market? | Yes (Correct) | Yes (Grounded) | Yes (Helpful) | Job: Lead Python Developer at Confidential, Job: Python Developer at Confidential, data_analyst_roadmap.md, software_engineer_roadmap.md |
 
 
 ## 3. Prompt comparison (before / after)

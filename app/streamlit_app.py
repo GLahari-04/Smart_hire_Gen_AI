@@ -358,14 +358,16 @@ if selected_resume_path and selected_resume_path.exists():
 
                 st.markdown("---")
                 for i, job in enumerate(matched_jobs, 1):
-                    # Compute user-friendly semantic relevance tag from score
-                    score = job.get('score', 2.0)
-                    if score < 1.1:
-                        rel_tag = '<span class="match-tag-high">🟢 High Match</span>'
-                    elif score < 1.25:
-                        rel_tag = '<span class="match-tag-good">🔵 Good Match</span>'
+                    # Compute user-friendly exact Cosine Similarity percentage S_cos = 1 - (d^2 / 2)
+                    l2_score = job.get('score', 2.0)
+                    sim_pct = max(0, min(100, int((1.0 - (l2_score ** 2) / 2.0) * 100)))
+
+                    if l2_score < 1.1:
+                        rel_tag = f'<span class="match-tag-high">🟢 High Match ({sim_pct}% Similarity)</span>'
+                    elif l2_score < 1.25:
+                        rel_tag = f'<span class="match-tag-good">🔵 Good Match ({sim_pct}% Similarity)</span>'
                     else:
-                        rel_tag = '<span class="match-tag-mod">🟡 Moderate Match</span>'
+                        rel_tag = f'<span class="match-tag-mod">🟡 Moderate Match ({sim_pct}% Similarity)</span>'
 
                     with st.container():
                         st.markdown(f"""
@@ -392,6 +394,8 @@ if selected_resume_path and selected_resume_path.exists():
 
                         with st.expander(f"View Job Description Snippet #{i}"):
                             st.write(job.get('snippet', 'N/A'))
+
+                st.caption("*Similarity % indicates normalized vector cosine text similarity between profile and posting, not hiring probability.")
 
             else:
                 st.warning("No job matches retrieved. Ensure the FAISS index exists in vectorstore/jobs_faiss.")
