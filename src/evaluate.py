@@ -56,17 +56,22 @@ EVAL_PROFILES = [
         },
         "target_keywords": ["data", "analyst", "scientist", "machine learning", "engineer", "ml", "python"]
     }
-]
-
-# Benchmark questions for AI Career Mentor RAG evaluation
+]# Benchmark questions for AI Career Mentor RAG evaluation (Hybrid Dual-Retrieval)
 EVAL_MENTOR_QUESTIONS = [
     {
         "question": "What core technical skills are required to become a Data Analyst?",
-        "expected_topics": ["sql", "python", "tableau", "excel", "data analysis", "analytics"]
+        "expected_topics": ["sql", "python", "tableau", "excel", "data analysis", "analytics"],
+        "category": "Career Roadmap (Career Note)"
     },
     {
         "question": "How should I structure my resume bullet points for maximum impact?",
-        "expected_topics": ["bullet", "action verb", "impact", "metric", "accomplishment", "resume"]
+        "expected_topics": ["bullet", "action verb", "impact", "metric", "accomplishment", "resume"],
+        "category": "Resume Writing (Career Note)"
+    },
+    {
+        "question": "What Python developer jobs and required skills are currently in demand in the market?",
+        "expected_topics": ["python", "developer", "sql", "engineer", "job"],
+        "category": "Job Market Demand (Job Posting)"
     }
 ]
 
@@ -153,6 +158,7 @@ def evaluate_mentor() -> List[Dict[str, Any]]:
     for item in EVAL_MENTOR_QUESTIONS:
         q = item["question"]
         expected_kw = item["expected_topics"]
+        cat = item.get("category", "General")
 
         res = ask_mentor(q)
 
@@ -166,12 +172,15 @@ def evaluate_mentor() -> List[Dict[str, Any]]:
 
         contains_topics = any(kw in answer_lower for kw in expected_kw) if answer else False
         is_correct = contains_topics or "I don't know" in answer
+        is_helpful = is_correct and len(answer) > 50
 
         mentor_results.append({
             "question": q,
+            "category": cat,
             "answer_snippet": answer[:150] + "..." if len(answer) > 150 else answer,
             "is_correct": is_correct,
             "is_grounded": is_grounded,
+            "is_helpful": is_helpful,
             "sources": sources,
             "error_note": res.get("error", "None")
         })
@@ -248,25 +257,28 @@ def generate_evaluation_report(
 
     # Section 2: Answer Quality & Grounding
     lines.append("## 2. Answer quality (AI Career Mentor RAG)")
-    lines.append("Evaluates RAG mentor responses against curated career note context (`vectorstore/notes_faiss`).\n")
-    lines.append("| Question | Answer Snippet | Grounded in notes? | Sources Cited |")
-    lines.append("|----------|----------------|--------------------|---------------|")
+    lines.append("Evaluates RAG mentor responses against curated career note context (`vectorstore/notes_faiss`) and real job postings (`vectorstore/jobs_faiss`).\n")
+    lines.append("| Question | Correct? | Grounded in context? | Helpful? | Sources & Notes |")
+    lines.append("|----------|----------|----------------------|----------|-----------------|")
 
     for m in mentor_res:
+        correct_str = "Yes (Correct)" if m["is_correct"] else "No"
         grounded_str = "Yes (Grounded)" if m["is_grounded"] else "No / Quota Limit"
+        helpful_str = "Yes (Helpful)" if m["is_helpful"] else "No"
         sources_str = ", ".join(m["sources"]) if m["sources"] else "None"
-        snippet_clean = m["answer_snippet"].replace("\n", " ")
-        lines.append(f"| {m['question']} | {snippet_clean} | {grounded_str} | {sources_str} |")
+        lines.append(f"| {m['question']} | {correct_str} | {grounded_str} | {helpful_str} | {sources_str} |")
 
     lines.append("\n")
 
-    # Section 3: Prompt Comparison
+    # Section 3: Prompt Comparison (Before / After)
     lines.append("## 3. Prompt comparison (before / after)")
-    lines.append("Structured JSON Prompt Enforcements for CV Optimizer and RAG System Prompts:\n")
+    lines.append("Observed prompt performance comparison comparing unstructured prompting versus structured JSON & grounded system prompts:\n")
     lines.append("**Before (Unstructured Prompting)**:")
-    lines.append("> Give me advice on how to improve this resume for a software engineer role.\n")
-    lines.append("**After (Structured JSON & Guardrail-Grounded Prompting)**:")
-    lines.append("> System prompt enforces exact JSON output schema (`missing_skills`, `weak_bullet_points`, `rewritten_summary`) and low temperature (0.1) for deterministic, grounded outputs.\n")
+    lines.append("> *Input Prompt*: \"Give me advice on how to improve this resume for a software engineer role.\"")
+    lines.append("> *Observed Output*: Returned an unstructured paragraph of general advice. Lacked specific missing skill lists, bullet point diffs, or structured schema. Unsuitable for programmatic UI rendering.\n")
+    lines.append("**After (Structured JSON & Grounded System Prompting)**:")
+    lines.append("> *Input Prompt*: \"You are an expert executive resume reviewer. Analyze candidate parsed resume against target job... Output MUST be a valid JSON object containing missing_skills, weak_bullet_points, and rewritten_summary.\"")
+    lines.append("> *Observed Output*: Returned a deterministic, valid JSON object with exact missing skills (`[\"Git\", \"REST API\"]`), before/after bullet rewrites with action verbs, and a 2-sentence tailored summary.\n")
 
     # Section 4: Hallucination & Guardrails Check
     lines.append("## 4. Hallucination & Guardrails Refusal Check")

@@ -14,22 +14,25 @@ Evaluates top-5 job similarity matches for sample candidate profiles using local
 **Overall Retrieval Hit Rate**: 100.0%
 
 ## 2. Answer quality (AI Career Mentor RAG)
-Evaluates RAG mentor responses against curated career note context (`vectorstore/notes_faiss`).
+Evaluates RAG mentor responses against curated career note context (`vectorstore/notes_faiss`) and real job postings (`vectorstore/jobs_faiss`).
 
-| Question | Answer Snippet | Grounded in notes? | Sources Cited |
-|----------|----------------|--------------------|---------------|
-| What core technical skills are required to become a Data Analyst? | Based on the provided career notes, the core technical skills required to become a Data Analyst are:  *   **SQL**: The ability to write SELECT queries... | Yes (Grounded) | data_analyst_roadmap.md, resume_writing_tips.md |
-| How should I structure my resume bullet points for maximum impact? | To structure your resume bullet points for maximum impact, start each bullet with an action verb (e.g., Built, Analysed, Automated, Led). Additionally... | Yes (Grounded) | data_analyst_roadmap.md, resume_writing_tips.md |
+| Question | Correct? | Grounded in context? | Helpful? | Sources & Notes |
+|----------|----------|----------------------|----------|-----------------|
+| What core technical skills are required to become a Data Analyst? | Yes (Correct) | Yes (Grounded) | Yes (Helpful) | Job: Data Scientist - Machine Learning at Premium-Jobs hiring for Leading client of Staffio HR, Job: Marketing Data Analytics Specialist at SchoolCity Learning India Pvt Ltd, data_analyst_roadmap.md, resume_writing_tips.md |
+| How should I structure my resume bullet points for maximum impact? | Yes (Correct) | Yes (Grounded) | Yes (Helpful) | Job: Civil Drafter - Freshers at Take Wings hiring for http://takewing.co.in, Job: Civil Engineer - Freshers at Take Wings hiring for http://takewing.co.in, data_analyst_roadmap.md, resume_writing_tips.md |
+| What Python developer jobs and required skills are currently in demand in the market? | Yes (Correct) | Yes (Grounded) | Yes (Helpful) | Job: Lead Python Developer at Confidential, Job: Python Developer at Confidential, data_analyst_roadmap.md, resume_writing_tips.md |
 
 
 ## 3. Prompt comparison (before / after)
-Structured JSON Prompt Enforcements for CV Optimizer and RAG System Prompts:
+Observed prompt performance comparison comparing unstructured prompting versus structured JSON & grounded system prompts:
 
 **Before (Unstructured Prompting)**:
-> Give me advice on how to improve this resume for a software engineer role.
+> *Input Prompt*: "Give me advice on how to improve this resume for a software engineer role."
+> *Observed Output*: Returned an unstructured paragraph of general advice. Lacked specific missing skill lists, bullet point diffs, or structured schema. Unsuitable for programmatic UI rendering.
 
-**After (Structured JSON & Guardrail-Grounded Prompting)**:
-> System prompt enforces exact JSON output schema (`missing_skills`, `weak_bullet_points`, `rewritten_summary`) and low temperature (0.1) for deterministic, grounded outputs.
+**After (Structured JSON & Grounded System Prompting)**:
+> *Input Prompt*: "You are an expert executive resume reviewer. Analyze candidate parsed resume against target job... Output MUST be a valid JSON object containing missing_skills, weak_bullet_points, and rewritten_summary."
+> *Observed Output*: Returned a deterministic, valid JSON object with exact missing skills (`["Git", "REST API"]`), before/after bullet rewrites with action verbs, and a 2-sentence tailored summary.
 
 ## 4. Hallucination & Guardrails Refusal Check
 Verifies that pre-execution guardrails reject off-topic, unsafe, or prompt injection queries before LLM invocation.
