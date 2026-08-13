@@ -1,19 +1,19 @@
 # SmartHire GenAI — Resume Matching & AI Career Mentor
 
-SmartHire GenAI is an AI-powered career assistance platform that helps job seekers analyze resumes, discover relevant job opportunities, optimize CV bullet points, and consult an AI Career Mentor.
+SmartHire GenAI is an end-to-end, AI-powered career assistance platform that helps job seekers extract resume intelligence, discover relevant job opportunities via vector similarity search, optimize CV bullet points, and consult an AI Career Mentor.
 
-The application combines Generative AI (Google Gemini 2.5 Flash Lite), local semantic search (SentenceTransformers `all-MiniLM-L6-v2`), FAISS vector databases, Retrieval-Augmented Generation (RAG), input safety guardrails, and an interactive Streamlit web application.
+The application combines Generative AI (Google Gemini 2.5 Flash Lite), local zero-cost embeddings (SentenceTransformers `all-MiniLM-L6-v2`), FAISS vector databases, Hybrid Retrieval-Augmented Generation (RAG), input safety guardrails, automated evaluation benchmarking, and an interactive Streamlit web portal.
 
 ---
 
-## Overview
+## Overview & Workflow
 
 SmartHire GenAI provides a 4-step workflow for candidate career optimization:
 
-1. **📊 Candidate Profile Extraction**: Resume parsing with structured profile extraction (Name, Skills, Experience, Education, Target Role) via Gemini API with an automatic local fallback parser.
-2. **🎯 Semantic Job Matcher**: Sub-second vector similarity search using local `all-MiniLM-L6-v2` embeddings and FAISS indices over job postings.
-3. **⚡ CV Optimizer**: AI-driven CV enhancement providing missing skill gaps, bullet point improvements (before/after comparison), and tailored professional summaries.
-4. **💬 AI Career Mentor**: RAG-powered career Q&A chatbot grounded in curated career roadmaps and resume writing guides, equipped with input guardrails.
+1. **📊 Candidate Profile Extraction**: Resume parsing with structured 5-key profile extraction (Name, Skills, Experience, Education, Target Role) via Gemini API with an automatic local fallback parser. Includes pre-loaded synthetic public PDF sample resumes.
+2. **🎯 Semantic Job Matcher**: Sub-second vector similarity search using local 384-dimensional `all-MiniLM-L6-v2` embeddings and FAISS indices over job postings. Displays mathematically exact Cosine Semantic Similarity percentages and qualitative match badges.
+3. **⚡ CV Optimizer**: AI-driven CV enhancement providing missing skill gap analysis, interactive skill coverage progress bars, before/after bullet point rewrites, tailored professional summaries, and downloadable Markdown reports (`.md`).
+4. **💬 AI Career Mentor**: Hybrid RAG-powered career chatbot retrieving from BOTH curated career roadmaps and real job market postings, equipped with pre-execution safety guardrails and source citations.
 
 ---
 
@@ -21,38 +21,63 @@ SmartHire GenAI provides a 4-step workflow for candidate career optimization:
 
 ### 1. Resume Parser (`src/parsing/`)
 * Extracts structured candidate profiles containing `name`, `skills`, `experience`, `education`, and `target_role`.
+* **Public Synthetic Demo Resumes (`data/resumes/`)**:
+  * Includes three pre-built, realistic synthetic PDF sample resumes:
+    - [`Sample_Software_Engineer_Resume.pdf`](data/resumes/Sample_Software_Engineer_Resume.pdf) *(Candidate: Alex Chen)*
+    - [`Sample_Data_Analyst_Resume.pdf`](data/resumes/Sample_Data_Analyst_Resume.pdf) *(Candidate: Jordan Taylor)*
+    - [`Sample_ML_Engineer_Resume.pdf`](data/resumes/Sample_ML_Engineer_Resume.pdf) *(Candidate: Morgan Vance)*
+  * **Privacy Guarantee**: All candidate information in sample resumes is 100% synthetic. Personal resume files (e.g., `Lahari_Resume.pdf`) remain strictly private and excluded by `.gitignore`.
 * **Hybrid Parser Architecture**:
   * Primary: Google Gemini 2.5 Flash Lite structured JSON mode.
-  * Resilience Fallback (`_parse_resume_locally`): Pure local regex and skill taxonomy parser that automatically intercepts 429 rate limits or network issues to return valid profile objects.
+  * Resilience Fallback (`_parse_resume_locally`): Pure local regex and evidence-weighted skill taxonomy parser that automatically intercepts 429 rate limits or network issues to return valid profile objects.
 
 ### 2. Semantic Job Matcher (`src/search/`)
 * Converts candidate profile data into 384-dimensional vector embeddings using local `SentenceTransformer("all-MiniLM-L6-v2")`.
 * Performs sub-second similarity matching against a FAISS L2 Euclidean index (`vectorstore/jobs_faiss`).
-* Displays human-readable relevance match badges (🟢 High Match, 🔵 Good Match, 🟡 Moderate Match) and enables direct candidate target job selection.
+* **Mathematically Exact Cosine Semantic Similarity Percentage**:
+  For unit-normalized vectors ($\|\vec{u}\| = \|\vec{v}\| = 1$), the Euclidean L2 distance $d = \|\vec{u} - \vec{v}\|_2$ and Cosine Similarity $S_{\cos}$ satisfy the exact mathematical identity:
+  $$S_{\cos} = 1 - \frac{d^2}{2} \implies \text{Semantic Similarity (\%)} = \max\left(0, \min\left(100, \text{round}\left(100 \times \left(1 - \frac{d^2}{2}\right)\right)\right)\right)$$
+* **Relevance Badges**: Displays human-readable match badges:
+  * `🟢 High Match (81% Similarity)` for $d < 1.1$
+  * `🔵 Good Match (63% Similarity)` for $d < 1.25$
+  * `🟡 Moderate Match (34% Similarity)` for $d \ge 1.25$
+* **Clarification**: The displayed percentage is a normalized **vector-text semantic similarity indicator** between candidate profile text and job postings; it is **NOT** a probability of getting hired or a job suitability prediction.
 
 ### 3. CV Optimizer (`src/generate/`)
 * Compares candidate profile against selected target job descriptions.
-* Generates tailored improvement recommendations:
+* **Interactive Skill Coverage Visualization**: Displays visual progress bar (`st.progress`) and chip badges showing matched required skills (`✓`) vs missing required skills (`⚠️`).
+* **Tailored Improvement Recommendations**:
   * **Skill Gap Analysis**: Identifies key missing technical skills.
   * **Bullet Point Diff Analysis**: Highlights weak bullet points and provides action-verb-oriented rewrites.
   * **Professional Summary**: Rewrites candidate summaries tailored to the target role.
+* **Downloadable Report Export**: Includes a `📥 Download CV Optimization Summary Report (.md)` button generating structured Markdown files (`CV_Optimization_Report_<Candidate_Name>.md`).
 
-### 4. RAG AI Career Mentor (`src/mentor/`)
-* Answers career development, resume writing, and interview prep questions.
-* **Retrieval-Augmented Generation (RAG)**: Retrieves top relevant documentation chunks from FAISS note indices (`vectorstore/notes_faiss`) built over curated career notes (`data/career_notes/`).
-* **Source Attribution**: Cites specific reference documents used to formulate answers.
+### 4. Hybrid RAG AI Career Mentor (`src/mentor/`)
+* Answers career development, roadmap, resume writing, interview prep, and job market demand questions.
+* **Hybrid Dual Retrieval**: Retrieves top relevant chunks simultaneously from:
+  1. **Career Notes Index (`vectorstore/notes_faiss`)**: Built over curated Markdown roadmaps (`data/career_notes/`):
+     - `data_analyst_roadmap.md`
+     - `resume_writing_tips.md`
+     - `software_engineer_roadmap.md`
+     - `interview_preparation_guide.md`
+  2. **Job Market Index (`vectorstore/jobs_faiss`)**: Real job posting requirements and titles.
+* **Context Labeling & Source Attribution**: Context blocks are labeled with `[Career Note: <filename>]` and `[Job Posting: <jobtitle> at <company>]`, with exact sources cited in mentor responses.
 
 ### 5. Input Safety Guardrails (`src/safety/`)
 * Pre-execution validation layer running before LLM calls (`src/safety/guardrails.py`).
 * **Safety Filters**:
   * Character length bounds validation.
-  * Prompt injection & system override detection.
+  * Prompt injection & system override detection (e.g., `act as DAN`).
   * Harmful / inappropriate keyword filtering.
   * Off-topic question filter & career domain relevance validation.
 
-### 6. Evaluation & Reports (`reports/`, `src/evaluate.py`)
-* Evaluation framework and performance metrics documented in `reports/answer_quality.md`.
-* `src/evaluate.py` serves as the evaluation module interface stub for automated benchmark extensions.
+### 6. Automated Evaluation Suite (`src/evaluate.py`, `reports/`)
+* Complete automated benchmarking suite in `src/evaluate.py`:
+  1. **Semantic Job Search Retrieval**: Precision @ 5 and Overall Hit Rate (100.0% benchmark score).
+  2. **AI Career Mentor Answer Quality**: Evaluates answer correctness, RAG grounding, and source citations.
+  3. **Prompt Comparison**: Documents output contrast between unstructured prompting vs structured JSON prompting.
+  4. **Guardrail Refusal Check**: Verifies 100% refusal of off-topic trivia and prompt injections.
+* Automatically compiles and saves execution metrics to [`reports/answer_quality.md`](reports/answer_quality.md).
 
 ---
 
@@ -66,13 +91,14 @@ SmartHire GenAI provides a 4-step workflow for candidate career optimization:
         │                 │                   │                   │
         ▼                 ▼                   ▼                   ▼
 ┌───────────────┐ ┌───────────────┐   ┌───────────────┐   ┌───────────────┐
-│ Candidate     │ │ Semantic Job  │   │ CV Optimizer  │   │ AI Career     │
-│ Profile       │ │ Matcher       │   │               │   │ Mentor        │
+│ Candidate     │ │ Semantic Job  │   │ CV Optimizer  │   │ Hybrid RAG    │
+│ Profile       │ │ Matcher       │   │ & Report      │   │ Career Mentor │
+│ (Synthetic/PDF) │ (1 - d²/2)    │   │ Download (.md)│   │ (Notes + Jobs)│
 └───────┬───────┘ └───────┬───────┘   └───────┬───────┘   └───────┬───────┘
         │                 │                   │                   │
         ▼                 ▼                   ▼                   ▼
 ┌───────────────┐ ┌───────────────┐   ┌───────────────┐   ┌───────────────┐
-│ Gemini /      │ │ Local Model   │   │ Gemini 2.5    │   │ Local RAG     │
+│ Gemini /      │ │ Local Model   │   │ Gemini 2.5    │   │ Local FAISS   │
 │ Local Parser  │ │ MiniLM + FAISS│   │ Flash Lite    │   │ + Guardrails  │
 └───────────────┘ └───────────────┘   └───────────────┘   └───────────────┘
 ```
@@ -85,9 +111,9 @@ SmartHire GenAI provides a 4-step workflow for candidate career optimization:
 * **LLM Engine**: Google Gemini API (`gemini-2.5-flash-lite`)
 * **Embedding Model**: `sentence-transformers` (`all-MiniLM-L6-v2`, 384 dimensions)
 * **Vector Database**: FAISS (`faiss-cpu`)
-* **Orchestration / RAG**: LangChain (`langchain-community`, `langchain-google-genai`)
-* **Document Processing**: `pypdf`, `python-docx`, `pandas`
-* **Environment Management**: `python-dotenv`
+* **Orchestration / RAG**: LangChain (`langchain-community`, `langchain-core`)
+* **Document Processing & PDF Generation**: `pypdf`, `reportlab`, `python-docx`, `pandas`
+* **Environment & Testing**: `python-dotenv`, `py_compile`
 
 ---
 
@@ -116,7 +142,12 @@ Create a `.env` file in the root directory (refer to `.env.example`):
 GOOGLE_API_KEY=your_gemini_api_key_here
 ```
 
-### 4. Run Application
+### 4. Run Automated Evaluation Suite (Optional)
+```bash
+python src/evaluate.py
+```
+
+### 5. Run Streamlit Application
 ```bash
 streamlit run app/streamlit_app.py
 ```
@@ -128,24 +159,24 @@ streamlit run app/streamlit_app.py
 ```text
 Smart_hire_Gen_AI/
 ├── app/
-│   └── streamlit_app.py          # Streamlit Web Application
+│   └── streamlit_app.py          # Streamlit Web Application (UI Portal)
 ├── src/
 │   ├── config.py                 # Centralized configuration & paths
-│   ├── evaluate.py               # Evaluation module interface stub
+│   ├── evaluate.py               # Automated evaluation & benchmarking suite
 │   ├── parsing/                  # Resume PDF/DOCX loaders & hybrid parser
 │   ├── search/                   # Local embeddings & FAISS job search
 │   ├── generate/                 # CV improvement generator & prompts
-│   ├── mentor/                   # RAG career mentor chain
+│   ├── mentor/                   # Hybrid RAG career mentor chain (Notes + Jobs)
 │   └── safety/                   # Pre-execution safety guardrails
 ├── data/
 │   ├── jobs/                     # Job dataset (naukri_com-job_sample.csv)
-│   ├── career_notes/             # Curated markdown guides for RAG
-│   └── resumes/                  # Sample resumes for testing
+│   ├── career_notes/             # Markdown guides for RAG (Data Analyst, SE, Interview)
+│   └── resumes/                  # Public synthetic PDF sample resumes
 ├── vectorstore/
 │   ├── jobs_faiss/               # FAISS 384-dim job postings vector index
 │   └── notes_faiss/              # FAISS 384-dim career notes vector index
 ├── reports/
-│   └── answer_quality.md         # Answer quality & retrieval evaluation report
+│   └── answer_quality.md         # Automated evaluation benchmark report
 ├── .env.example                  # Environment configuration template
 ├── .gitignore                    # Git secrets & artifact exclusion rules
 ├── requirements.txt              # Production python package dependencies
