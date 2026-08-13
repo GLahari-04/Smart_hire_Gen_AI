@@ -18,7 +18,7 @@ from langchain_core.documents import Document
 from src import config
 from src.generate import prompts
 from src.parsing import loader
-from src.search.job_search import GeminiEmbeddingsWrapper
+from src.search.job_search import GeminiEmbeddingsWrapper, load_faiss_index
 
 try:
     from google.api_core.exceptions import ResourceExhausted
@@ -116,20 +116,22 @@ def load_notes_index(save_dir: Optional[Path] = None) -> FAISS:
 def ask_mentor(
     question: str,
     top_k: int = config.TOP_K_NOTES,
-    index_dir: Optional[Path] = None
+    index_dir: Optional[Path] = None,
+    top_k_jobs: int = 2
 ) -> Dict[str, Any]:
-    """Query the AI Career Mentor using RAG over the career notes corpus.
+    """Query the AI Career Mentor using hybrid RAG over career notes and job postings.
 
     Args:
         question (str): The career or resume question from the candidate.
         top_k (int): Number of relevant note chunks to retrieve (defaults to config.TOP_K_NOTES).
         index_dir (Optional[Path]): Optional path to notes FAISS index directory.
+        top_k_jobs (int): Number of job postings to retrieve from job market index (default: 2).
 
     Returns:
         Dict[str, Any]: Dictionary containing:
             - "question": str
             - "answer": str
-            - "sources": List[str] (names of source files used)
+            - "sources": List[str] (names of source files and job postings used)
             - "retrieved_chunks": List[str] (content of retrieved chunks)
     """
     if not question or not question.strip():
@@ -140,34 +142,52 @@ def ask_mentor(
             "retrieved_chunks": []
         }
 
-    # 1. Load notes FAISS vector index
-    vectorstore = load_notes_index(index_dir)
-
-    # 2. Retrieve top K relevant document chunks
-    retrieved_docs = vectorstore.similarity_search(question.strip(), k=top_k)
-
-    if not retrieved_docs:
-        return {
-            "question": question,
-            "answer": "I don't know based on the provided career notes.",
-            "sources": [],
-            "retrieved_chunks": []
-        }
-
-    # Format context block and collect sources
     context_blocks = []
     sources = set()
     chunks = []
 
-    for doc in retrieved_docs:
-        source_file = doc.metadata.get("source", "Unknown Note")
-        sources.add(source_file)
-        chunks.append(doc.page_content)
-        context_blocks.append(f"[Document: {source_file}]\n{doc.page_content}")
+    # 1. Retrieve top K relevant chunks from Career Notes FAISS index
+    try:
+        notes_vectorstore = load_notes_index(index_dir)
+        retrieved_notes = notes_vectorstore.similarity_search(question.strip(), k=top_k)
+        for doc in retrieved_notes:
+            source_file = doc.metadata.get("source", "Career Note")
+            sources.add(source_file)
+            chunks.append(doc.page_content)
+            context_blocks.append(f"[Career Note: {source_file}]\n{doc.page_content}")
+    except Exception as err:
+        print(f"Notice: Career notes index lookup: {err}")
+
+    # 2. Retrieve top K relevant job posting chunks from Jobs FAISS index
+    try:
+        jobs_vectorstore = load_faiss_index()
+        retrieved_jobs = jobs_vectorstore.similarity_search(question.strip(), k=top_k_jobs)
+        for doc in retrieved_jobs:
+            job_title = doc.metadata.get("jobtitle", "Job Posting")
+            company = doc.metadata.get("company", "Company")
+            skills = doc.metadata.get("skills", "N/A")
+            snippet = doc.page_content[:300] if len(doc.page_content) > 300 else doc.page_content
+            
+            job_label = f"Job: {job_title} at {company}"
+            sources.add(job_label)
+            
+            job_text = f"Title: {job_title}\nCompany: {company}\nRequired Skills: {skills}\nDetails: {snippet}"
+            chunks.append(job_text)
+            context_blocks.append(f"[Job Posting: {job_title} at {company}]\n{job_text}")
+    except Exception as err:
+        print(f"Notice: Jobs index lookup: {err}")
+
+    if not context_blocks:
+        return {
+            "question": question,
+            "answer": "I don't know based on the provided career notes and job market context.",
+            "sources": [],
+            "retrieved_chunks": []
+        }
 
     context_str = "\n\n".join(context_blocks)
 
-    # 3. Format RAG system prompt
+    # 3. Format hybrid RAG system prompt
     prompt = prompts.MENTOR_SYSTEM_PROMPT.format(
         context=context_str,
         question=question.strip()
@@ -180,7 +200,7 @@ def ask_mentor(
     for attempt in range(max_retries):
         try:
             response = model.generate_content(prompt)
-            answer_text = response.text.strip() if response and response.text else "I don't know based on the provided career notes."
+            answer_text = response.text.strip() if response and response.text else "I don't know based on the provided career notes and job market context."
 
             return {
                 "question": question,
