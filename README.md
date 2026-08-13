@@ -6,6 +6,20 @@ The application combines Generative AI (Google Gemini 2.5 Flash Lite), local zer
 
 ---
 
+## 🚀 Live Demo & Web Application
+
+The interactive SmartHire GenAI web portal is deployed and accessible online:
+
+👉 **Live Deployed App**: [https://smarthiregenai-fnmvqvkgrjecvvqwm8zhzy.streamlit.app/](https://smarthiregenai-fnmvqvkgrjecvvqwm8zhzy.streamlit.app/)  
+👉 **Local Development URL**: [http://localhost:8501](http://localhost:8501)
+
+To launch the Streamlit application in your local environment:
+```bash
+streamlit run app/streamlit_app.py
+```
+
+---
+
 ## Overview & Workflow
 
 SmartHire GenAI provides a 4-step workflow for candidate career optimization:
@@ -14,6 +28,46 @@ SmartHire GenAI provides a 4-step workflow for candidate career optimization:
 2. **🎯 Semantic Job Matcher**: Sub-second vector similarity search using local 384-dimensional `all-MiniLM-L6-v2` embeddings and FAISS indices over job postings. Displays mathematically exact Cosine Semantic Similarity percentages and qualitative match badges.
 3. **⚡ CV Optimizer**: AI-driven CV enhancement providing missing skill gap analysis, interactive skill coverage progress bars, before/after bullet point rewrites, tailored professional summaries, and downloadable Markdown reports (`.md`).
 4. **💬 AI Career Mentor**: Hybrid RAG-powered career chatbot retrieving from BOTH curated career roadmaps and real job market postings, equipped with pre-execution safety guardrails and source citations.
+
+---
+
+## 🌟 Core Engineering Highlights
+
+- 🔍 **Hybrid Dual-Retrieval RAG**: Simultaneously queries curated Markdown roadmaps (`notes_faiss`) and real job postings (`jobs_faiss`), attributing context blocks with exact `[Career Note]` and `[Job Posting]` labels.
+- ⚡ **Zero-Cost Local FAISS Vector Search**: Performs sub-second semantic matching over 384-dimensional `all-MiniLM-L6-v2` embeddings, calculating exact Cosine Semantic Similarity percentages ($S_{\cos} = 1 - \frac{d^2}{2}$).
+- 🛡️ **Hybrid Rate-Resilient Resume Parser**: Combines Google Gemini 2.5 Flash Lite structured JSON mode with an automatic local regex/taxonomy fallback parser (`_parse_resume_locally`) to handle 429 quota exhaustion gracefully.
+- 🛡️ **Pre-Execution Input Guardrails**: Intercepts off-topic trivia, character bounds violations, and prompt injection attacks (`act as DAN`) prior to LLM invocation.
+- 📈 **Automated Evaluation Benchmark Suite**: Self-contained module (`src/evaluate.py`) that evaluates Retrieval Precision @ 5 (100% Hit Rate), RAG grounding, and guardrail refusal, automatically compiling metrics to `reports/answer_quality.md`.
+- 📥 **CV Optimization Summary Export**: Generates interactive skill coverage progress bars (`st.progress`) and downloadable Markdown summary reports (`CV_Optimization_Report_<Candidate_Name>.md`).
+
+---
+
+## 🖥️ Application Showcase & Module Walkthrough
+
+SmartHire GenAI organizes candidate workflows across four specialized Streamlit portal tabs:
+
+### 1. 📊 Candidate Intelligence Overview (Tab 1)
+* Displays extracted 5-key candidate profile metrics: **Candidate Name**, **Target Role**, **Extracted Skills Count**, and **Accomplishments**.
+* Renders color-coded skill chips (`<span class="skill-chip">`) and raw profile JSON expansion viewers.
+* Includes 3 pre-loaded synthetic public PDF sample resumes ([`Alex Chen`](data/resumes/Sample_Software_Engineer_Resume.pdf), [`Jordan Taylor`](data/resumes/Sample_Data_Analyst_Resume.pdf), [`Morgan Vance`](data/resumes/Sample_ML_Engineer_Resume.pdf)) in `data/resumes/`.
+
+### 2. 🎯 Semantic Job Matcher (Tab 2)
+* Performs sub-second vector similarity matching against `vectorstore/jobs_faiss` using `SentenceTransformer("all-MiniLM-L6-v2")`.
+* Renders color-coded match relevance badges:
+  * `🟢 High Match` for $d < 1.1$ (Example: 81% Similarity at $d \approx 0.61$)
+  * `🔵 Good Match` for $d < 1.25$ (Example: 63% Similarity at $d \approx 0.87$)
+  * `🟡 Moderate Match` for $d \ge 1.25$ (Example: 34% Similarity at $d \approx 1.15$)
+* Includes one-click **`🎯 Select for CV Analysis`** buttons to transfer target job context directly to Tab 3.
+
+### 3. ⚡ CV Optimizer (Tab 3)
+* **Interactive Skill Coverage Meter**: Visual progress bar (`st.progress`) comparing candidate skills against required job skills with green checkmark chips (`✓`) and orange warning chips (`⚠️`).
+* **AI Bullet Point Rewrites**: Before/after bullet point diff analysis explaining why bullets are weak and providing action-verb rewrites.
+* **Report Export**: `📥 Download CV Optimization Summary Report (.md)` button generating structured Markdown files (`CV_Optimization_Report_<Name>.md`).
+
+### 4. 💬 AI Career Mentor (Tab 4)
+* RAG-powered chatbot utilizing hybrid dual retrieval over career guides and job market postings.
+* Features quick-prompt shortcuts (*"Data Analyst Skills Roadmap"*, *"Resume Writing Tips"*, *"Interview Preparation Guide"*).
+* Displays cited reference sources directly below generated responses.
 
 ---
 
@@ -38,9 +92,9 @@ SmartHire GenAI provides a 4-step workflow for candidate career optimization:
   For unit-normalized vectors ($\|\vec{u}\| = \|\vec{v}\| = 1$), the Euclidean L2 distance $d = \|\vec{u} - \vec{v}\|_2$ and Cosine Similarity $S_{\cos}$ satisfy the exact mathematical identity:
   $$S_{\cos} = 1 - \frac{d^2}{2} \implies \text{Semantic Similarity (\%)} = \max\left(0, \min\left(100, \text{round}\left(100 \times \left(1 - \frac{d^2}{2}\right)\right)\right)\right)$$
 * **Relevance Badges**: Displays human-readable match badges:
-  * `🟢 High Match (81% Similarity)` for $d < 1.1$
-  * `🔵 Good Match (63% Similarity)` for $d < 1.25$
-  * `🟡 Moderate Match (34% Similarity)` for $d \ge 1.25$
+  * `🟢 High Match` for $d < 1.1$ (Example: 81% Similarity at $d \approx 0.61$)
+  * `🔵 Good Match` for $d < 1.25$ (Example: 63% Similarity at $d \approx 0.87$)
+  * `🟡 Moderate Match` for $d \ge 1.25$ (Example: 34% Similarity at $d \approx 1.15$)
 * **Clarification**: The displayed percentage is a normalized **vector-text semantic similarity indicator** between candidate profile text and job postings; it is **NOT** a probability of getting hired or a job suitability prediction.
 
 ### 3. CV Optimizer (`src/generate/`)
@@ -108,7 +162,7 @@ SmartHire GenAI provides a 4-step workflow for candidate career optimization:
 ## Technology Stack
 
 * **Frontend**: Streamlit
-* **LLM Engine**: Google Gemini API (`gemini-2.5-flash-lite`)
+* **LLM Engine**: Google Gemini API (`gemini-2.5-flash-lite`, `gemini-flash-latest`)
 * **Embedding Model**: `sentence-transformers` (`all-MiniLM-L6-v2`, 384 dimensions)
 * **Vector Database**: FAISS (`faiss-cpu`)
 * **Orchestration / RAG**: LangChain (`langchain-community`, `langchain-core`)
