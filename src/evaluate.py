@@ -88,6 +88,10 @@ EVAL_OUT_OF_SCOPE_QUESTIONS = [
     {
         "question": "Tell me a recipe for chocolate cake.",
         "category": "Off-Topic Request"
+    },
+    {
+        "question": "who is Anjali",
+        "category": "Off-Topic Person Query"
     }
 ]
 

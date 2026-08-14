@@ -41,14 +41,19 @@ CAREER_DOMAIN_KEYWORDS: List[str] = [
     "developer", "engineer", "experience", "education", "project",
     "learn", "course", "portfolio", "bullet point", "qualification",
     "industry", "transition", "apply", "company", "recruit", "sql",
-    "python", "data", "software", "management", "code", "tech"
+    "python", "data", "software", "management", "code", "tech",
+    "mentor", "advice", "guidance", "tip", "prep", "prepare", "preparation",
+    "offer", "hire", "hired", "promotion", "intern", "internship", "java",
+    "javascript", "react", "c++", "ai", "cloud", "aws", "azure", "git",
+    "github", "frontend", "backend", "fullstack", "testing", "qa", "design"
 ]
 
 # Explicitly off-topic general trivia / non-career patterns
 OFF_TOPIC_PATTERNS: List[str] = [
     r"capital\s+of",
-    r"who\s+is\s+the\s+prime\s+minister",
-    r"who\s+is\s+the\s+president",
+    r"\bwho\s+is\b",
+    r"\bwho\s+was\b",
+    r"\bwho\s+are\b",
     r"who\s+won\s+the",
     r"recipe\s+for",
     r"weather\s+in",
@@ -97,14 +102,16 @@ def validate_question(text: str) -> Tuple[bool, str]:
         if re.search(rf"\b{re.escape(keyword)}\b", lower_text):
             return False, f"Input rejected: Unsafe or inappropriate content detected ('{keyword}')."
 
+    # Check domain keyword presence
+    has_domain_keyword = any(kw in lower_text for kw in CAREER_DOMAIN_KEYWORDS)
+
     # 5. Off-Topic / General Trivia pattern check
     for pattern in OFF_TOPIC_PATTERNS:
-        if re.search(pattern, lower_text):
+        if re.search(pattern, lower_text) and not has_domain_keyword:
             return False, "Input rejected: Question is off-topic. Please ask a career, job, resume, or interview-related question."
 
     # 6. Domain relevance check (ensure input relates to careers/jobs)
-    has_domain_keyword = any(kw in lower_text for kw in CAREER_DOMAIN_KEYWORDS)
-    if not has_domain_keyword and len(cleaned_text) > 15:
+    if not has_domain_keyword:
         return False, "Input rejected: Question does not appear to be related to careers, jobs, resumes, or professional skills."
 
     return True, "Input validation passed."
